@@ -72,6 +72,7 @@ let bufferLength = 2 * 1024
 let buffer = new ArrayBuffer(bufferLength)
 let uint8View = new Uint8Array(buffer)
 let int32View = new Int32Array(buffer)
+let dataView = new DataView(buffer)
 
 export function murmur2(str) {
   if (str.length > bufferLength) {
@@ -82,6 +83,7 @@ export function murmur2(str) {
 
     uint8View = new Uint8Array(buffer)
     int32View = new Int32Array(buffer)
+    dataView = new DataView(buffer)
   }
 
   const length = encoder.encodeInto(str, uint8View).written;
@@ -132,6 +134,70 @@ export function murmur2(str) {
   return h.toString(36)
 }
 
+
+export function murmur2_dataview(str) {
+  if (str.length > bufferLength) {
+    // buffer.resize() is only available in recent browsers, so we re-allocate
+    // a new and views
+    bufferLength = str.length + (4 - str.length % 4)
+    buffer = new ArrayBuffer(bufferLength)
+
+    uint8View = new Uint8Array(buffer)
+    int32View = new Int32Array(buffer)
+    dataView = new DataView(buffer)
+  }
+
+  const length = encoder.encodeInto(str, uint8View).written;
+
+  // 'm' and 'r' are mixing constants generated offline.
+  // They're not really 'magic', they just happen to work well.
+
+  const m = 0x5bd1e995;
+  const r = 24;
+
+  // Initialize the hash
+  let h = 0
+
+  // Mix 4 bytes at a time into the hash
+
+  let i = 0
+  let len = length | 0
+  while (len >= 4) {
+    let k = dataView.getInt32(i, true)
+
+    k = Math.imul(k, m)
+    k ^= k >>> r
+    k = Math.imul(k, m)
+
+    h = Math.imul(h, m)
+    h ^= k
+
+    i = i + 1 | 0
+    len = len - 4 | 0
+  }
+
+  // Handle the last few bytes of the input array
+
+  switch (len) {
+    case 3:
+      h ^= (uint8View[(i * 4 | 0) + 2 | 0] & 0xff) << 16
+    case 2:
+      h ^= (uint8View[(i * 4 | 0) + 1 | 0] & 0xff) << 8
+    case 1:
+      h ^= uint8View[i * 4 | 0] & 0xff
+      h = Math.imul(h, m)
+  }
+
+  // Do a few final mixes of the hash to ensure the last few
+  // bytes are well-incorporated.
+
+  h ^= h >>> 13
+  h = Math.imul(h, m)
+  h = (h ^ (h >>> 15)) >>> 0
+
+  return h.toString(36)
+}
+
 export function murmur2_hex(str) {
   if (str.length > bufferLength) {
     // buffer.resize() is only available in recent browsers, so we re-allocate
@@ -141,6 +207,7 @@ export function murmur2_hex(str) {
 
     uint8View = new Uint8Array(buffer)
     int32View = new Int32Array(buffer)
+    dataView = new DataView(buffer)
   }
 
   const length = encoder.encodeInto(str, uint8View).written;
@@ -200,6 +267,7 @@ export function murmur2_dec(str) {
 
     uint8View = new Uint8Array(buffer)
     int32View = new Int32Array(buffer)
+    dataView = new DataView(buffer)
   }
 
   const length = encoder.encodeInto(str, uint8View).written;
@@ -292,6 +360,7 @@ export function xxh(string) {
 
     uint8View = new Uint8Array(buffer)
     int32View = new Int32Array(buffer)
+    dataView = new DataView(buffer)
   }
 
   const length8 = encoder.encodeInto(string, uint8View).written;
@@ -343,6 +412,68 @@ export function xxh(string) {
 
 
 
+
+export function xxh_dataview(string) {
+  if (string.length > bufferLength) {
+    // buffer.resize() is only available in recent browsers, so we re-allocate
+    // a new and views
+    bufferLength = string.length + (4 - string.length % 4)
+    buffer = new ArrayBuffer(bufferLength)
+
+    uint8View = new Uint8Array(buffer)
+    int32View = new Int32Array(buffer)
+    dataView = new DataView(buffer)
+  }
+
+  const length8 = encoder.encodeInto(string, uint8View).written;
+
+  const seed = 0;
+  const len = length8 | 0;
+  let i = 0;
+  let h = (seed + len | 0) + 0x165667B1 | 0;
+
+  if (len < 16) {
+    for (; (i + 3 | 0) < len; i = i + 4 | 0)
+      h = Math.imul(
+        rotl32(h + Math.imul(dataView.getInt32(i, true), 0xC2B2AE3D) | 0, 17) | 0,
+        0x27D4EB2F
+      );
+  } else {
+    let v0 = seed + 0x24234428 | 0;
+    let v1 = seed + 0x85EBCA77 | 0;
+    let v2 = seed;
+    let v3 = seed - 0x9E3779B1 | 0;
+
+    for (; (i + 15 | 0) < len; i = i + 16 | 0) {
+      v0 = Math.imul(rotl32(v0 + Math.imul(dataView.getInt32(i + 0 | 0, true), 0x85EBCA77) | 0, 13) | 0, 0x9E3779B1);
+      v1 = Math.imul(rotl32(v1 + Math.imul(dataView.getInt32(i + 4 | 0, true), 0x85EBCA77) | 0, 13) | 0, 0x9E3779B1);
+      v2 = Math.imul(rotl32(v2 + Math.imul(dataView.getInt32(i + 8 | 0, true), 0x85EBCA77) | 0, 13) | 0, 0x9E3779B1);
+      v3 = Math.imul(rotl32(v3 + Math.imul(dataView.getInt32(i + 12 | 0, true), 0x85EBCA77) | 0, 13) | 0, 0x9E3779B1);
+    }
+
+    h = (((
+        rotl32(v0,  1) | 0 +
+        rotl32(v1,  7) | 0) +
+        rotl32(v2, 12) | 0) +
+        rotl32(v3, 18) | 0)
+    + len | 0;
+
+    for (; (i + 3 | 0) < len; i = i + 4 | 0) {
+      h = Math.imul(rotl32(h + Math.imul(dataView.getInt32(i, true), 0xC2B2AE3D) | 0, 17) | 0, 0x27D4EB2F);
+    }
+  }
+
+  for (; i < len; i = i + 1 | 0) {
+    h = Math.imul(rotl32(h + Math.imul(uint8View[i] | 0, 0x165667B1) | 0, 11) | 0, 0x9E3779B1);
+  }
+  h = Math.imul(h ^ h >>> 15, 0x85EBCA77);
+  h = Math.imul(h ^ h >>> 13, 0xC2B2AE3D);
+
+  return ((h ^ h >>> 16) >>> 0).toString(36);
+}
+
+
+
 const FNV_PRIME_32 = 16_777_619
 const FNV_OFFSET_32 = 2_166_136_261
 
@@ -355,6 +486,7 @@ export function fnv1a(string) {
 
     uint8View = new Uint8Array(buffer)
     int32View = new Int32Array(buffer)
+    dataView = new DataView(buffer)
   }
 
   const length8 = encoder.encodeInto(string, uint8View).written | 0;
@@ -380,6 +512,7 @@ export function djb2a(string) {
 
     uint8View = new Uint8Array(buffer)
     int32View = new Int32Array(buffer)
+    dataView = new DataView(buffer)
   }
 
   const length8 = encoder.encodeInto(string, uint8View).written | 0;
@@ -426,6 +559,17 @@ export default {
         return () => {
           for (let i = 0; i < inputs.length; i++) {
             murmur2(inputs[i])
+          }
+        }
+      }
+    },
+
+    {
+      id: 'murmur2_dataview',
+      setup: () => {
+        return () => {
+          for (let i = 0; i < inputs.length; i++) {
+            murmur2_dataview(inputs[i])
           }
         }
       }
@@ -482,6 +626,15 @@ export default {
       setup: () => {
         return () => {
           for (let i = 0; i < inputs.length; i++) { xxh(inputs[i]) }
+        }
+      }
+    },
+
+    {
+      id: 'xxh_dataview',
+      setup: () => {
+        return () => {
+          for (let i = 0; i < inputs.length; i++) { xxh_dataview(inputs[i]) }
         }
       }
     },
